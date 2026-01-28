@@ -72,11 +72,11 @@ app.post("/items", async (req, res) => {
 /* PUT update item */
 app.put("/items/:id", async (req, res) => {
     const { id } = req.params;
-    const { item_name, category, location, description, status } = req.body;
+    const { item_name, category, location, status } = req.body;
 
     const sql = `
         UPDATE items
-        SET item_name = ?, category = ?, location = ?, description = ?, status = ?
+        SET item_name = ?, category = ?, location = ?, status = ?
         WHERE id = ?
     `;
 
@@ -85,7 +85,6 @@ app.put("/items/:id", async (req, res) => {
             item_name,
             category,
             location,
-            description,
             status,
             id
         ]);
