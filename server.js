@@ -28,7 +28,7 @@ const pool = mysql.createPool({
 /* GET all items */
 app.get("/items", async (req, res) => {
   try {
-    const [rows] = await pool.execute("SELECT * FROM items ORDER BY id DESC");
+    const [rows] = await pool.execute("SELECT * FROM item ORDER BY id DESC");
     res.json(rows);
   } catch (err) {
     console.error(err);
@@ -42,7 +42,7 @@ app.post("/items", async (req, res) => {
 
   try {
     const [result] = await pool.execute(
-      `INSERT INTO items (item_name, category, location, status)
+      `INSERT INTO item (item_name, category, location, status)
        VALUES (?, ?, ?, ?)`,
       [item_name, category, location, status || "Lost"]
     );
@@ -61,7 +61,7 @@ app.put("/items/:id", async (req, res) => {
 
   try {
     await pool.execute(
-      `UPDATE items
+      `UPDATE item
        SET item_name = ?, category = ?, location = ?, status = ?
        WHERE id = ?`,
       [item_name, category, location, status, id]
@@ -79,7 +79,7 @@ app.delete("/items/:id", async (req, res) => {
   const { id } = req.params;
 
   try {
-    await pool.execute("DELETE FROM items WHERE id = ?", [id]);
+    await pool.execute("DELETE FROM item WHERE id = ?", [id]);
     res.json({ message: "Item deleted" });
   } catch (err) {
     console.error(err);
