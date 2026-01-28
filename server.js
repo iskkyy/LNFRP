@@ -20,8 +20,7 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 5,
   queueLimit: 0,
-  ssl: { rejectUnauthorized: true },
-  enableKeepAlive: true
+  ssl: { rejectUnauthorized: false }
 });
 
 /* ===================== ROUTES ===================== */
