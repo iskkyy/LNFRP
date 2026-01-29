@@ -9,9 +9,12 @@ const PORT = process.env.PORT || 3000;
 /* ===================== MIDDLEWARE ===================== */
 app.use(cors({
   origin: [
-    'http://localhost:22751',                        // local frontend
-    'https://your-frontend-render-url.onrender.com' // deployed frontend
-  ]
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://lnfrp.onrender.com',
+    'https://*.vercel.app'
+  ],
+  credentials: true
 }));
 
 app.use(express.json());
@@ -29,9 +32,18 @@ const pool = mysql.createPool({
   ssl: { rejectUnauthorized: false }
 });
 
-/* ===================== ROUTES ===================== */
+/* ===== TEST DB CONNECTION ===== */
+(async () => {
+  try {
+    const conn = await pool.getConnection();
+    console.log("✅ Database connected successfully");
+    conn.release();
+  } catch (err) {
+    console.error("❌ Database connection failed:", err.message);
+  }
+})();
 
-/* GET all items */
+/* ===================== ROUTES ===================== */
 app.get("/items", async (req, res) => {
   try {
     const [rows] = await pool.execute("SELECT * FROM item ORDER BY id DESC");
@@ -42,7 +54,6 @@ app.get("/items", async (req, res) => {
   }
 });
 
-/* POST new item */
 app.post("/items", async (req, res) => {
   const { item_name, category, location, status } = req.body;
 
@@ -60,7 +71,6 @@ app.post("/items", async (req, res) => {
   }
 });
 
-/* PUT update item */
 app.put("/items/:id", async (req, res) => {
   const { id } = req.params;
   const { item_name, category, location, status } = req.body;
@@ -80,7 +90,6 @@ app.put("/items/:id", async (req, res) => {
   }
 });
 
-/* DELETE item */
 app.delete("/items/:id", async (req, res) => {
   const { id } = req.params;
 
@@ -98,7 +107,5 @@ app.get("/", (req, res) => res.send("Lost & Found API running..."));
 
 /* ===================== SERVER ===================== */
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
-
-module.exports = app; // Required for Vercel
