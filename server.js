@@ -9,14 +9,10 @@ const PORT = process.env.PORT || 3000;
 /* ===================== MIDDLEWARE ===================== */
 app.use(cors({
   origin: [
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'https://lnfrp.onrender.com',
-    'https://*.vercel.app'
-  ],
-  credentials: true
+    'http://localhost:3000', // local frontend
+    'https://lostandfoundappwebapp.vercel.app' // deployed frontend
+  ]
 }));
-
 app.use(express.json());
 
 /* ===================== DATABASE POOL ===================== */
@@ -29,52 +25,42 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 5,
   queueLimit: 0,
-  ssl: { rejectUnauthorized: false }
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false
 });
 
-/* ===== TEST DB CONNECTION ===== */
-(async () => {
-  try {
-    const conn = await pool.getConnection();
-    console.log("✅ Database connected successfully");
-    conn.release();
-  } catch (err) {
-    console.error("❌ Database connection failed:", err.message);
-  }
-})();
-
 /* ===================== ROUTES ===================== */
+
+// GET all items
 app.get("/items", async (req, res) => {
   try {
     const [rows] = await pool.execute("SELECT * FROM item ORDER BY id DESC");
     res.json(rows);
   } catch (err) {
-    console.error(err);
+    console.error("DB Error:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
+// POST new item
 app.post("/items", async (req, res) => {
   const { item_name, category, location, status } = req.body;
-
   try {
     const [result] = await pool.execute(
       `INSERT INTO item (item_name, category, location, status)
        VALUES (?, ?, ?, ?)`,
       [item_name, category, location, status || "Lost"]
     );
-
     res.status(201).json({ message: "Item added", id: result.insertId });
   } catch (err) {
-    console.error(err);
+    console.error("DB Error:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
+// PUT update item
 app.put("/items/:id", async (req, res) => {
   const { id } = req.params;
   const { item_name, category, location, status } = req.body;
-
   try {
     await pool.execute(
       `UPDATE item
@@ -82,30 +68,29 @@ app.put("/items/:id", async (req, res) => {
        WHERE id = ?`,
       [item_name, category, location, status, id]
     );
-
     res.json({ message: "Item updated" });
   } catch (err) {
-    console.error(err);
+    console.error("DB Error:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
+// DELETE item
 app.delete("/items/:id", async (req, res) => {
   const { id } = req.params;
-
   try {
     await pool.execute("DELETE FROM item WHERE id = ?", [id]);
     res.json({ message: "Item deleted" });
   } catch (err) {
-    console.error(err);
+    console.error("DB Error:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-/* HEALTH CHECK */
+// Health check
 app.get("/", (req, res) => res.send("Lost & Found API running..."));
 
 /* ===================== SERVER ===================== */
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+module.exports = app; // For testing or deployment
