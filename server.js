@@ -7,7 +7,13 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 /* ===================== MIDDLEWARE ===================== */
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:22751',                        // local frontend
+    'https://your-frontend-render-url.onrender.com' // deployed frontend
+  ]
+}));
+
 app.use(express.json());
 
 /* ===================== DATABASE POOL ===================== */
