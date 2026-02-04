@@ -1,7 +1,8 @@
-const express = require("express");
-const mysql = require("mysql2/promise");
-const cors = require("cors");
-require("dotenv").config();
+const express = require('express');
+const mysql = require('mysql2/promise');
+const cors = require('cors');
+const jwt = require("jsonwebtoken");
+require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -9,8 +10,8 @@ const PORT = process.env.PORT || 3000;
 /* ===================== MIDDLEWARE ===================== */
 app.use(cors({
   origin: [
-    'http://localhost:3000', 
-    'https://lostandfoundappwebapp.vercel.app'
+    'http://localhost:3000', // local frontend
+    'https://lostandfoundappwebapp.vercel.app' // deployed frontend
   ]
 }));
 app.use(express.json());
@@ -28,16 +29,6 @@ const pool = mysql.createPool({
   ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false
 });
 
-// Immediate DB Connection Check
-pool.getConnection()
-  .then(conn => {
-    console.log("✅ Connected to MySQL Database");
-    conn.release();
-  })
-  .catch(err => {
-    console.error("❌ Database connection failed:", err.message);
-  });
-
 /* ===================== ROUTES ===================== */
 
 // GET all items
@@ -47,19 +38,13 @@ app.get("/items", async (req, res) => {
     res.json(rows);
   } catch (err) {
     console.error("DB Error:", err);
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: err.message });
   }
 });
 
 // POST new item
 app.post("/items", async (req, res) => {
   const { item_name, category, location, status } = req.body;
-
-  // Basic Validation
-  if (!item_name || !category || !location) {
-    return res.status(400).json({ error: "item_name, category, and location are required." });
-  }
-
   try {
     const [result] = await pool.execute(
       `INSERT INTO item (item_name, category, location, status)
@@ -69,7 +54,7 @@ app.post("/items", async (req, res) => {
     res.status(201).json({ message: "Item added", id: result.insertId });
   } catch (err) {
     console.error("DB Error:", err);
-    res.status(500).json({ error: "Failed to create item" });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -77,27 +62,17 @@ app.post("/items", async (req, res) => {
 app.put("/items/:id", async (req, res) => {
   const { id } = req.params;
   const { item_name, category, location, status } = req.body;
-
-  if (!item_name || !category || !location || !status) {
-    return res.status(400).json({ error: "All fields are required for update." });
-  }
-
   try {
-    const [result] = await pool.execute(
+    await pool.execute(
       `UPDATE item
        SET item_name = ?, category = ?, location = ?, status = ?
        WHERE id = ?`,
       [item_name, category, location, status, id]
     );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Item not found" });
-    }
-
     res.json({ message: "Item updated" });
   } catch (err) {
     console.error("DB Error:", err);
-    res.status(500).json({ error: "Update failed" });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -105,16 +80,11 @@ app.put("/items/:id", async (req, res) => {
 app.delete("/items/:id", async (req, res) => {
   const { id } = req.params;
   try {
-    const [result] = await pool.execute("DELETE FROM item WHERE id = ?", [id]);
-    
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Item not found" });
-    }
-
+    await pool.execute("DELETE FROM item WHERE id = ?", [id]);
     res.json({ message: "Item deleted" });
   } catch (err) {
     console.error("DB Error:", err);
-    res.status(500).json({ error: "Delete failed" });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -124,4 +94,4 @@ app.get("/", (req, res) => res.send("Lost & Found API running..."));
 /* ===================== SERVER ===================== */
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
-module.exports = app;
+module.exports = app; // For testing or deployment
