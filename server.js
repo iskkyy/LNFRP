@@ -110,7 +110,7 @@ app.use(cors({
     'http://localhost:3000', 
     'https://lostandfoundappwebapp.vercel.app' 
   ],
-  methods: ["GET", "POST", "PUT", "DELETE"], // Explicitly allow these
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   credentials: true
 }));
 app.use(express.json());
@@ -127,70 +127,72 @@ const pool = mysql.createPool({
 
 /* ===================== ROUTES ===================== */
 
-// GET all items
+// GET: Fetch all items
 app.get("/items", async (req, res) => {
   try {
     const [rows] = await pool.execute("SELECT * FROM item ORDER BY id DESC");
     res.json(rows);
   } catch (err) {
     console.error("❌ GET Error:", err.message);
-    res.status(500).json({ error: "Failed to fetch items" });
+    res.status(500).json({ error: "Could not fetch items" });
   }
 });
 
-// POST new item
+// POST: Add new item (ID is now handled by SQL)
 app.post("/items", async (req, res) => {
   const { item_name, category, location, status } = req.body;
-  if (!item_name) return res.status(400).json({ error: "Item name required" });
-
   try {
     const [result] = await pool.execute(
       `INSERT INTO item (item_name, category, location, status) VALUES (?, ?, ?, ?)`,
       [item_name, category, location, status || "Lost"]
     );
-    // If this fails with ER_NO_DEFAULT_FOR_FIELD, run the SQL fix below!
     res.status(201).json({ message: "Item added", id: result.insertId });
   } catch (err) {
-    console.error("❌ POST Error:", err.sqlMessage || err.message);
-    res.status(500).json({ error: err.message });
+    console.error("❌ POST Error:", err.message);
+    res.status(500).json({ error: "Database rejected the new item." });
   }
 });
 
-// PUT update item
+// PUT: Update item
 app.put("/items/:id", async (req, res) => {
   const { id } = req.params;
   const { item_name, category, location, status } = req.body;
+
+  console.log(`DEBUG: Attempting to UPDATE item #${id}`);
+
   try {
     const [result] = await pool.execute(
       `UPDATE item SET item_name = ?, category = ?, location = ?, status = ? WHERE id = ?`,
       [item_name, category, location, status, id]
     );
-    
+
     if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Item not found in database" });
+      return res.status(404).json({ error: `Item #${id} not found.` });
     }
-    res.json({ message: "Item updated" });
+    res.json({ message: "Update successful" });
   } catch (err) {
-    console.error(`❌ PUT Error (ID: ${id}):`, err.message);
-    res.status(500).json({ error: err.message });
+    console.error(`❌ PUT Error on ID ${id}:`, err.message);
+    res.status(500).json({ error: "Update failed on server." });
   }
 });
 
-// DELETE item
+// DELETE: Remove item
 app.delete("/items/:id", async (req, res) => {
   const { id } = req.params;
+  
+  console.log(`DEBUG: Attempting to DELETE item #${id}`);
+
   try {
     const [result] = await pool.execute("DELETE FROM item WHERE id = ?", [id]);
+
     if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Item not found" });
+      return res.status(404).json({ error: `Item #${id} does not exist.` });
     }
     res.json({ message: "Item deleted" });
   } catch (err) {
-    console.error(`❌ DELETE Error (ID: ${id}):`, err.message);
-    res.status(500).json({ error: err.message });
+    console.error(`❌ DELETE Error on ID ${id}:`, err.message);
+    res.status(500).json({ error: "Delete failed on server." });
   }
 });
 
-app.get("/", (req, res) => res.send("Lost & Found API running..."));
-
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 API is live on port ${PORT}`));
